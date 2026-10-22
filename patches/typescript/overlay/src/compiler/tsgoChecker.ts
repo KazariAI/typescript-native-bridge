@@ -72,7 +72,8 @@ function jsDocTagsFromDeclarations(decls: readonly any[] | undefined): any[] {
 /** Per-Program host/overlay state — avoids module-level last-writer-wins when tsserver holds multiple projects. */
 interface TnbProgramContext {
     lsHost: any;
-    overlayHostCtx: { host: any; options: any; configFilePath: string };
+    /** useSourceOfProjectReferenceRedirect: the createProgram host's opt-in, read like stock's program.ts. */
+    overlayHostCtx: { host: any; options: any; configFilePath: string; useSourceOfProjectReferenceRedirect: boolean };
     pendingOverlays?: any[];
     pendingExtraFileExtensions?: any[];
     /** Root files the host computed but the tsconfig expansion may miss (LS getScriptFileNames shims, glint readDirectory extras) — forwarded as updateSnapshot additionalFiles. */
@@ -776,9 +777,16 @@ function toWireCompilerOptions(options: any): Record<string, any> {
     return out;
 }
 
-/** openProject wire entry: file name + effective options (see above). */
-function openProjectParam(configFilePath: string, options: any): { fileName: string; compilerOptions: Record<string, any> } {
-    return { fileName: configFilePath, compilerOptions: toWireCompilerOptions(options) };
+/** openProject wire entry: file name + effective options (see above).
+ * tsgo's project service always asks for project-reference source redirects;
+ * stock grants them only to a host that opts in (tsserver's Project), so tsc,
+ * createProgram and a plain language-service host read the referenced
+ * project's emitted declarations. An explicit
+ * disableSourceOfProjectReferenceRedirect crosses as-is either way. */
+function openProjectParam(configFilePath: string, options: any, useSourceOfProjectReferenceRedirect: boolean): { fileName: string; compilerOptions: Record<string, any> } {
+    const compilerOptions = toWireCompilerOptions(options);
+    if (!useSourceOfProjectReferenceRedirect) compilerOptions.disableSourceOfProjectReferenceRedirect = true;
+    return { fileName: configFilePath, compilerOptions };
 }
 
 /** Per-generation getCompilerOptionsForFile memo, keyed by the live vendored project wrapper — see optionsForFile (no-project-references fast path). */
@@ -803,10 +811,10 @@ type SyncDelta = {
     prefetchDiagnostics?: boolean;
 };
 
-function steadySyncParams(configFilePath: string, options: any, openFiles: string[]): SteadySyncParams {
+function steadySyncParams(configFilePath: string, options: any, useSourceOfProjectReferenceRedirect: boolean, openFiles: string[]): SteadySyncParams {
     const additionalFiles = _lastAdditionalFilesByConfig.get(configFilePath);
     return {
-        openProject: openProjectParam(configFilePath, options),
+        openProject: openProjectParam(configFilePath, options, useSourceOfProjectReferenceRedirect),
         ...(openFiles.length > 0 ? { openFiles } : {}),
         ...(_lastExtraFileExtensions?.length ? { extraFileExtensions: _lastExtraFileExtensions } : {}),
         ...(additionalFiles?.length ? { additionalFiles } : {}),
@@ -5753,7 +5761,7 @@ export function createTsgoProgram(
     const lsHost = _languageServiceHost ?? host;
     const programCtx: TnbProgramContext = {
         lsHost,
-        overlayHostCtx: { host: lsHost, options, configFilePath },
+        overlayHostCtx: { host: lsHost, options, configFilePath, useSourceOfProjectReferenceRedirect: !!host.useSourceOfProjectReferenceRedirect?.() },
         diskStampPass: lsHost === host ? { goReadStartMs: Date.now(), stamped: new Set() } : undefined,
     };
     // The previous generation's files are stamped before the drain so a moved
@@ -8426,7 +8434,7 @@ export function createTsgoChecker(program: any): any {
         // then joins the in-flight pass (Go-side singleflight). Never set for
         // interactive hosts: a full check per keystroke would be pure waste.
         const prefetchDiagnostics = !!(options as any).tscBuild;
-        const steady = steadySyncParams(configFilePath!, options, openFiles);
+        const steady = steadySyncParams(configFilePath!, options, !!programCtx?.overlayHostCtx.useSourceOfProjectReferenceRedirect, openFiles);
         const synced = syncSnapshot(configFilePath!, steady, {
             openFilesWithContent,
             ...(externalChanged?.length ? { fileChanges: { changed: externalChanged } } : {}),
@@ -8858,7 +8866,7 @@ export function createTsgoChecker(program: any): any {
             if (entry) openFilesWithContent.push(entry);
         }
         if (!openFiles.length && !openFilesWithContent.length && !externalChanged) return;
-        const { project: refreshed, snapshot } = syncSnapshot(ctx.configFilePath, steadySyncParams(ctx.configFilePath, ctx.options, openFiles), {
+        const { project: refreshed, snapshot } = syncSnapshot(ctx.configFilePath, steadySyncParams(ctx.configFilePath, ctx.options, ctx.useSourceOfProjectReferenceRedirect, openFiles), {
             openFilesWithContent,
             ...(externalChanged ? { fileChanges: { changed: externalChanged } } : {}),
         });
