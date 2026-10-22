@@ -5761,7 +5761,7 @@ export function createTsgoProgram(
     const lsHost = _languageServiceHost ?? host;
     const programCtx: TnbProgramContext = {
         lsHost,
-        overlayHostCtx: { host: lsHost, options, configFilePath, useSourceOfProjectReferenceRedirect: !!host.useSourceOfProjectReferenceRedirect?.() },
+        overlayHostCtx: { host: lsHost, options, configFilePath, useSourceOfProjectReferenceRedirect: !!host?.useSourceOfProjectReferenceRedirect?.() },
         diskStampPass: lsHost === host ? { goReadStartMs: Date.now(), stamped: new Set() } : undefined,
     };
     // The previous generation's files are stamped before the drain so a moved

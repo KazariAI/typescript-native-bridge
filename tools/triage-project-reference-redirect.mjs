@@ -10,7 +10,8 @@
  *
  * Mirrors the issue's lib/app fixture and diffs the app program's files
  * against stock for: the tsc CLI (--listFilesOnly), tsc -b (--listFiles over
- * both projects), createProgram, a language-service host without the opt-in,
+ * both projects), createProgram with and without a host (stock then creates
+ * its own CompilerHost), a language-service host without the opt-in,
  * one with it (tsserver's shape: sources), and one with it under an explicit
  * disableSourceOfProjectReferenceRedirect (declarations).
  *
@@ -49,6 +50,8 @@ if (process.argv[2] === '--child') {
 	let program;
 	if (cell === 'createProgram') {
 		program = ts.createProgram({ rootNames: cfg.fileNames, options: cfg.options, host: ts.createCompilerHost(cfg.options), projectReferences: cfg.projectReferences });
+	} else if (cell === 'createProgram (no host)') {
+		program = ts.createProgram({ rootNames: cfg.fileNames, options: cfg.options, projectReferences: cfg.projectReferences });
 	} else {
 		const host = {
 			getCompilationSettings: () => cfg.options,
@@ -77,6 +80,7 @@ const cells = {
 	'tsc -p': ['app/src/main.ts', 'dist/lib/greet.d.ts'],
 	'tsc -b': ['app/src/main.ts', 'dist/lib/greet.d.ts', 'lib/src/greet.ts'],
 	'createProgram': ['app/src/main.ts', 'dist/lib/greet.d.ts'],
+	'createProgram (no host)': ['app/src/main.ts', 'dist/lib/greet.d.ts'],
 	'ls-plain': ['app/src/main.ts', 'dist/lib/greet.d.ts'],
 	'ls-redirect': ['app/src/main.ts', 'lib/src/greet.ts'],
 	'ls-redirect-disabled': ['app/src/main.ts', 'dist/lib/greet.d.ts'],
