@@ -11,7 +11,10 @@ import {
     type SourceFile,
     SyntaxKind,
 } from "./types.js";
-import { type CreateSourceFileOptions } from "./parser.js";
+import {
+    type CreateSourceFileOptions,
+    isDeclarationFileName,
+} from "./parser.js";
 import { factory } from "./factory/nodeFactory.js";
 import {
     computeLineStarts,
@@ -119,7 +122,7 @@ export function createSkeletonSourceFile(
     anySf.commentDirectives = [];
     anySf.checkJsDirective = undefined;
     anySf.hasNoDefaultLib = false;
-    anySf.isDeclarationFile = false;
+    anySf.isDeclarationFile = isDeclarationFileName(fileName);
     anySf.parseDiagnostics = [];
     anySf.bindDiagnostics = [];
     anySf.nodeCount = 0;

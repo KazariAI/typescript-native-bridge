@@ -629,7 +629,7 @@ function createSharedLightStub(hostFileName: string, configFilePath: string, met
         languageVersion,
         languageVariant: 0,
         scriptKind: inferScriptKind(hostFileName),
-        isDeclarationFile: hostFileName.endsWith(".d.ts"),
+        isDeclarationFile: ts.isDeclarationFileName(hostFileName),
         hasNoDefaultLib: false,
         get referencedFiles() { return delegateOr("referencedFiles", []); },
         get typeReferenceDirectives() { return delegateOr("typeReferenceDirectives", []); },
@@ -7382,7 +7382,7 @@ export function createTsgoProgram(
                 sourceMaps: [],
             };
         },
-        isSourceFileFromExternalLibrary: () => false,
+        isSourceFileFromExternalLibrary: (sf: any) => goProgram().isSourceFileFromExternalLibrary(sf),
         isSourceFileDefaultLibrary: (sf: any) => goProgram().isSourceFileDefaultLibrary(sf),
         // getBuildInfo is stock-overridden by createBuilderProgram (the JS
         // builder installs its state-based generator on the program object);

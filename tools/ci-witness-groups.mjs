@@ -48,7 +48,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const TOTAL = 93;
+const TOTAL = 94;
 
 // Witnesses intentionally NOT in the matrix — run on demand (reasons above).
 const LOCAL_ONLY = [
@@ -183,6 +183,7 @@ const groups = [
 			'triage-deep-relation-cache', // ~3s (issue #77)
 			'triage-extra-extension-dts', // ~5s (issue #63)
 			'triage-gtd-declmap-allowedits', // ~1.5s (synthesized fixture + two tsserver sessions)
+			'triage-external-dts-flags', // ~3s (issue #82)
 		],
 	},
 	{
